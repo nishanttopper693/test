@@ -1,0 +1,222 @@
+pict@pict-OptiPlex-SFF-Plus-7010:~$ mysql -h 10.10.8.119 -u se21365 -p
+Enter password: 
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 1538
+Server version: 5.5.5-10.4.19-MariaDB MariaDB Server
+
+Copyright (c) 2000, 2026, Oracle and/or its affiliates.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> use se21365_db
+Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A
+
+Database changed
+
+mysql> create table Customers(Customer_Name varchar(50) Primary Key,Account_Number int,Balance int, City varchar(20));
+Query OK, 0 rows affected (0.15 sec)
+
+mysql> create table Loan(Loan_No int Primary Key, Branch_Name varchar(20),Amount int);
+Query OK, 0 rows affected (0.21 sec)
+
+mysql> CREATE table Borrower (
+    ->     Customer_Name VARCHAR(50),
+    ->     Loan_No int,
+    ->     Credit_Score int,
+    ->     foreign key (Customer_Name) REFERENCES Customers(Customer_Name),
+    ->     foreign key (Loan_No) REFERENCES Loan(Loan_No)
+    -> );
+Query OK, 0 rows affected (0.39 sec)
+
+mysql> insert into Customers values
+    -> ('Amit Sharma', 1001, 120000, 'Mumbai'),
+    -> ('Priya Nair', 1002, 85000, 'Delhi'),
+    -> ('Rahul Verma', 1003, 60000, 'Bangalore'),
+    -> ('Sneha Iyer', 1004, 150000, 'Chennai'),
+    -> ('Arjun Mehta', 1005, 95000, 'Pune'),
+    -> ('Neha Kapoor', 1006, 40000, 'Hyderabad'),
+    -> ('Vikram Singh', 1007, 200000, 'Jaipur');
+Query OK, 7 rows affected (0.03 sec)
+Records: 7  Duplicates: 0  Warnings: 0
+
+mysql> insert into Loan values
+    -> (201, 'Mumbai_Main', 20000),
+    -> (202, 'Delhi_Central', 30000),
+    -> (203, 'Bangalore_North', 35000),
+    -> (204, 'Chennai_Branch', 90000),
+    -> (205, 'Pune_West', 50000),
+    -> (206, 'Hyderabad_South', 25000),
+    -> (207, 'Jaipur_City', 150000);
+Query OK, 7 rows affected (0.04 sec)
+Records: 7  Duplicates: 0  Warnings: 0
+
+mysql> insert into Borrower (Customer_Name, Loan_No, Credit_Score) VALUES
+    -> ('Amit Sharma', 201, NULL),
+    -> ('Priya Nair', 202, NULL),
+    -> ('Rahul Verma', 203, NULL),
+    -> ('Sneha Iyer', 204, NULL),
+    -> ('Arjun Mehta', 205, NULL),
+    -> ('Neha Kapoor', 206, NULL),
+    -> ('Vikram Singh', 207, NULL);
+Query OK, 7 rows affected (0.08 sec)
+Records: 7  Duplicates: 0  Warnings: 0
+
+mysql> select * from Customers;
++---------------+----------------+---------+-----------+
+| Customer_Name | Account_Number | Balance | City      |
++---------------+----------------+---------+-----------+
+| Amit Sharma   |           1001 |  120000 | Mumbai    |
+| Arjun Mehta   |           1005 |   95000 | Pune      |
+| Neha Kapoor   |           1006 |   40000 | Hyderabad |
+| Priya Nair    |           1002 |   85000 | Delhi     |
+| Rahul Verma   |           1003 |   60000 | Bangalore |
+| Sneha Iyer    |           1004 |  150000 | Chennai   |
+| Vikram Singh  |           1007 |  200000 | Jaipur    |
++---------------+----------------+---------+-----------+
+7 rows in set (0.00 sec)
+
+mysql> select * from Loan;
++---------+-----------------+--------+
+| Loan_No | Branch_Name     | Amount |
++---------+-----------------+--------+
+|     201 | Mumbai_Main     |  20000 |
+|     202 | Delhi_Central   |  30000 |
+|     203 | Bangalore_North |  35000 |
+|     204 | Chennai_Branch  |  90000 |
+|     205 | Pune_West       |  50000 |
+|     206 | Hyderabad_South |  25000 |
+|     207 | Jaipur_City     | 150000 |
++---------+-----------------+--------+
+7 rows in set (0.00 sec)
+
+mysql> select * from Borrower;
++---------------+---------+--------------+
+| Customer_Name | Loan_No | Credit_Score |
++---------------+---------+--------------+
+| Amit Sharma   |     201 |         NULL |
+| Priya Nair    |     202 |         NULL |
+| Rahul Verma   |     203 |         NULL |
+| Sneha Iyer    |     204 |         NULL |
+| Arjun Mehta   |     205 |         NULL |
+| Neha Kapoor   |     206 |         NULL |
+| Vikram Singh  |     207 |         NULL |
++---------------+---------+--------------+
+7 rows in set (0.00 sec)
+
+mysql> delimiter #
+
+mysql> create function calculate_credit_score(amount int, balance int)
+    -> returns int
+    -> deterministic
+    -> begin
+    ->     declare sum int;
+    ->
+    ->     set sum = (amount * 100) / balance;
+    ->
+    ->     if sum <= 20 then
+    ->         return 5;
+    ->     elseif sum <= 40 then
+    ->         return 4;
+    ->     elseif sum <= 60 then
+    ->         return 3;
+    ->     elseif sum <= 80 then
+    ->         return 2;
+    ->     elseif sum <= 100 then
+    ->         return 1;
+    ->     else
+    ->         return 0;
+    ->     end if;
+    ->
+    -> end #
+
+Query OK, 0 rows affected (0.10 sec)
+
+mysql> 
+mysql> delimiter ;
+mysql> delimiter #
+
+mysql> create procedure cal_score_cursor()
+    -> begin
+    ->     declare bal int;
+    ->     declare loanAmount int;
+    ->     declare name varchar(50);
+    ->     declare level int;
+    ->     declare done int default 0;
+    ->
+    ->     declare cur cursor for
+    ->         select c.Customer_Name, c.Balance, l.Amount
+    ->         from Customers c
+    ->         join Borrower b on c.Customer_Name = b.Customer_Name
+    ->         join Loan l on b.Loan_No = l.Loan_No;
+    ->
+    ->     declare continue handler for not found
+    ->     begin
+    ->         set done = 1;
+    ->     end;
+    ->
+    ->     open cur;
+    ->
+    ->     read_loop: loop
+    ->         fetch cur into name, bal, loanAmount;
+    ->
+    ->         if done = 1 then
+    ->             leave read_loop;
+    ->         end if;
+    ->
+    ->         set level = calculate_credit_score(loanAmount, bal);
+    ->
+    ->         update Borrower
+    ->         set Credit_Score = level
+    ->         where Customer_Name = name;
+    ->
+    ->     end loop read_loop;
+    ->
+    ->     close cur;
+    ->
+    -> end #
+
+Query OK, 0 rows affected (0.09 sec)
+
+mysql> delimiter ;
+
+mysql> select * from Borrower;
++---------------+---------+--------------+
+| Customer_Name | Loan_No | Credit_Score |
++---------------+---------+--------------+
+| Amit Sharma   |     201 |         NULL |
+| Priya Nair    |     202 |         NULL |
+| Rahul Verma   |     203 |         NULL |
+| Sneha Iyer    |     204 |         NULL |
+| Arjun Mehta   |     205 |         NULL |
+| Neha Kapoor   |     206 |         NULL |
+| Vikram Singh  |     207 |         NULL |
++---------------+---------+--------------+
+7 rows in set (0.00 sec)
+
+mysql> call cal_score_cursor();
+Query OK, 7 rows affected (2.07 sec)
+
+mysql> select * from Borrower;
++---------------+---------+--------------+
+| Customer_Name | Loan_No | Credit_Score |
++---------------+---------+--------------+
+| Amit Sharma   |     201 |            5 |
+| Priya Nair    |     202 |            4 |
+| Rahul Verma   |     203 |            3 |
+| Sneha Iyer    |     204 |            2 |
+| Arjun Mehta   |     205 |            3 |
+| Neha Kapoor   |     206 |            2 |
+| Vikram Singh  |     207 |            2 |
++---------------+---------+--------------+
+7 rows in set (0.00 sec)
+
+
+
+
+
+
